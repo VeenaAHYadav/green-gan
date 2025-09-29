@@ -1,0 +1,14 @@
+streamlit>=1.18
+numpy
+pandas
+scikit-learn
+matplotlib
+torch>=1.10
+tqdm
+seaborn
+psutil
+scipy
+joblib
+umap-learn
+# optional, for measuring energy (system-dependent):
+# pyRAPL or pyJoules (install if you want precise energy measurement on supported platforms)
