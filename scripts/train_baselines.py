@@ -1,12 +1,11 @@
-
 import numpy as np
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score, roc_auc_score, confusion_matrix
 
-data = np.load('data/processed/train.npz')
+data = np.load(r"C:\Users\veena\Green GAN\green-gan\data\processed\train.npz")
 X_train, y_train = data['X'], data['y']
-data = np.load('data/processed/test.npz')
+data = np.load(r"C:\Users\veena\Green GAN\green-gan\data\processed\train.npz")
 X_test, y_test = data['X'], data['y']
 
 rf = RandomForestClassifier(n_estimators=50, class_weight='balanced', random_state=42)
