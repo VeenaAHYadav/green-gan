@@ -1,1 +1,10 @@
-
+version: "3"
+services:
+  green_gan:
+    build: .
+    volumes:
+      - .:/workspace
+    tty: true
+    environment:
+      - PYTHONUNBUFFERED=1
+      - CUDA_VISIBLE_DEVICES=0
