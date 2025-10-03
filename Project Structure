@@ -1,0 +1,39 @@
+Green-GAN/
+│
+├── README.md
+├── LICENSE
+├── requirements.txt
+├── environment.yml
+├── Dockerfile
+├── docker-compose.yml
+├── data/
+│   ├── raw/
+│   └── processed/
+├── scripts/
+│   ├── download_data.sh
+│   ├── preprocess_data.py
+│   ├── train_baselines.py
+│   ├── train_green_gan.py
+│   ├── adversarial_attacks.py
+│   ├── evaluate.py
+│   ├── utils.py
+│   └── unit_tests.py
+├── notebook/
+│   └── GreenGAN_demo.ipynb
+├── models/
+│   ├── green_gan.py
+│   ├── ids_models.py
+│   └── regularizers.py
+├── outputs/
+│   ├── logs/
+│   ├── plots/
+│   ├── samples/
+│   └── models/
+├── examples/
+│   ├── adv_samples.csv
+│   ├── confusion_matrix_before.png
+│   ├── confusion_matrix_after.png
+│   ├── roc_clean.png
+│   ├── roc_adv.png
+├── citations.bib
+└── appendix.md
