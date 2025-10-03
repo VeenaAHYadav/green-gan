@@ -5,20 +5,35 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 import argparse
 
+
 def clean_and_concat(raw_dir, use_small=False):
+    # Use raw_dir from argument, no need to reassign
     files = [f for f in os.listdir(raw_dir) if f.endswith('.csv')]
     if use_small:
         files = files[:2]  # subselect for small mode
 
+    print("CSV files found:", files)
+
     frames = []
     for fname in files:
         df = pd.read_csv(os.path.join(raw_dir, fname), low_memory=False)
-        if 'Label' not in df.columns or df.shape[1] < 10: continue
+        df.columns = df.columns.str.strip()  # remove leading/trailing spaces
+
+        if 'Label' not in df.columns or df.shape[1] < 10:
+            print(f"Skipping {fname}: missing 'Label' or too few columns")
+            continue
+
         df = df.replace([np.inf, -np.inf], np.nan)
-        df = df.dropna(axis=0, subset=['Label'])
-        frames.append(df)
+        df = df.dropna(subset=['Label'])
+        frames.append(df)  # <-- THIS WAS MISSING
+
+    if not frames:
+        raise ValueError(f"No valid CSVs found in {raw_dir}. Check your files and column names.")
+
     df_all = pd.concat(frames, axis=0, ignore_index=True)
+    print(f"Loaded {len(frames)} CSVs with total shape: {df_all.shape}")
     return df_all
+
 
 def preprocess(df):
     # Remove non-feature columns
@@ -55,8 +70,8 @@ def split_and_save(df, out_dir):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--input_dir", default="../data/raw")
-    parser.add_argument("--output_dir", default="../data/processed")
+    parser.add_argument("--input_dir", default=r"C:\Users\veena\Green GAN\green-gan\data\raw\MachineLearningCVE")
+    parser.add_argument("--output_dir", default=r"C:\Users\veena\Green GAN\green-gan\data\processed")
     parser.add_argument("--small", action="store_true")
     args = parser.parse_args()
 
