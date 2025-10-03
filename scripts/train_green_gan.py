@@ -1,53 +1,92 @@
 import torch
 import torch.nn as nn
-from torch.utils.data import TensorDataset, DataLoader
-from models.green_gan import GreenGenerator, GreenDiscriminator
-from models.ids_models import TinyIDSNet
-from models.regularizers import energy_regularizer
+import torch.optim as optim
 
-# Load data
-X_train = np.load('data/processed/train.npz')['X']
-X_train = torch.tensor(X_train, dtype=torch.float32)
-n_features = X_train.size(1)
 
-G = GreenGenerator(latent_dim=16, n_features=n_features)
-D = GreenDiscriminator(n_features=n_features)
-
-# IDS model for attack guidance
-ids_model = TinyIDSNet(n_features=n_features)
-# (Load pretrained weights...)
-
-# Training setup (loss, optimizer)
-adv_criterion = nn.BCELoss()
-optim_G = torch.optim.Adam(G.parameters(), lr=1e-3)
-optim_D = torch.optim.Adam(D.parameters(), lr=1e-3)
-
+latent_dim = 16         
+n_features = 77         
 batch_size = 128
-epochs = 3  # demo setting; use more in full mode
+lr = 0.0002
+num_epochs = 1000
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-dl = DataLoader(X_train, batch_size=batch_size, shuffle=True)
 
-for epoch in range(epochs):
-    for i, real_x in enumerate(dl):
-        z = torch.randn(real_x.size(0), 16)
+class GreenGenerator(nn.Module):
+    def __init__(self, latent_dim, n_features):
+        super().__init__()
+        self.model = nn.Sequential(
+            nn.Linear(latent_dim, 128),
+            nn.ReLU(),
+            nn.Linear(128, 64),
+            nn.ReLU(),
+            nn.Linear(64, n_features),
+            nn.Sigmoid() 
+        )
+
+    def forward(self, x):
+        return self.model(x)
+
+
+class GreenDiscriminator(nn.Module):
+    def __init__(self, input_dim):
+        super().__init__()
+        self.model = nn.Sequential(
+            nn.Linear(input_dim, 128),
+            nn.LeakyReLU(0.2),
+            nn.Linear(128, 64),
+            nn.LeakyReLU(0.2),
+            nn.Linear(64, 1),
+            nn.Sigmoid()  
+        )
+
+    def forward(self, x):
+        return self.model(x)
+
+
+# Instantiate models
+G = GreenGenerator(latent_dim, n_features).to(device)
+D = GreenDiscriminator(n_features).to(device)
+
+# Loss and optimizers
+adv_criterion = nn.BCELoss()
+optimizer_G = optim.Adam(G.parameters(), lr=lr)
+optimizer_D = optim.Adam(D.parameters(), lr=lr)
+
+
+real_data_samples = 10000
+real_dataset = torch.rand(real_data_samples, n_features).to(device)
+
+
+for epoch in range(num_epochs):
+    for i in range(0, real_data_samples, batch_size):
+        
+        real_x = real_dataset[i:i+batch_size]
+        current_batch = real_x.size(0)
+
+        # Labels
+        real_y = torch.ones(current_batch, 1).float().to(device)
+        fake_y = torch.zeros(current_batch, 1).float().to(device)
+
+        
+        z = torch.randn(current_batch, latent_dim).to(device)
         fake_x = G(z)
 
-        ## Train D
-        real_y = torch.ones(real_x.size(0), 1)
-        fake_y = torch.zeros(real_x.size(0), 1)
         D_loss = adv_criterion(D(real_x), real_y) + adv_criterion(D(fake_x.detach()), fake_y)
-        optim_D.zero_grad()
+
+        optimizer_D.zero_grad()
         D_loss.backward()
-        optim_D.step()
+        optimizer_D.step()
 
-        ## Train G: fool D and attack IDS, penalize energy
-        attack_labels = torch.ones(real_x.size(0), dtype=torch.long)  # Label: should be attack samples
-        ids_logits = ids_model(fake_x)
-        ids_probs = nn.Softmax(dim=1)(ids_logits)[:,1]
-        fool_loss = -torch.log(ids_probs + 1e-7).mean()
+        
+        z = torch.randn(current_batch, latent_dim).to(device)
+        fake_x = G(z)
+        G_loss = adv_criterion(D(fake_x), real_y)  # trick D
 
-        G_loss = adv_criterion(D(fake_x), real_y) + fool_loss + 0.1*energy_regularizer(real_x, fake_x)
-        optim_G.zero_grad()
+        optimizer_G.zero_grad()
         G_loss.backward()
-        optim_G.step()
+        optimizer_G.step()
 
+    if epoch % 50 == 0:
+        print(f"Epoch [{epoch}/{num_epochs}]  D_loss: {D_loss.item():.4f}  G_loss: {G_loss.item():.4f}")
+
+print("Training complete!")
